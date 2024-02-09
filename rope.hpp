@@ -40,9 +40,19 @@ public:
             return node;
         }
 
+        // atm it is assumed only root node on root node delete is called
+        // deleting anyother node (internal or leaf) will work but will break insert because that assumes left and right to be either defined together or not defined together
         template <typename rope_node_allocator>
         static void delete_rope_node(rope_node *node, rope_node_allocator& _rope_node_allocator) {
+            rope_node *parent = node->parent;
             delete_rope_node_impl(node, _rope_node_allocator);
+            node = parent;
+            if (node) {
+                while (node->parent) {
+                    node->parent->count = node->parent->left->count + node->parent->right->count;
+                    node = node->parent;
+                }
+            }
         }
 
         template <typename rope_node_allocator>
@@ -309,7 +319,6 @@ public:
 
                         // update all parents count
                         while (current_node->parent) {
-                            
                             current_node->parent->count = current_node->parent->left->count + current_node->parent->right->count;
                             current_node = current_node->parent;
                         }
