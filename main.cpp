@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <queue>
 #include <cassert>
 
 // didnt know what to call this, its just an allocater that checks if all the allocations are deallocated
