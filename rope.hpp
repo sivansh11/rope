@@ -147,7 +147,7 @@ public:
                 if (current_node->right) stack[stack_idx++] = current_node->right;
                 if (current_node->left) stack[stack_idx++] = current_node->left;
 
-                if (!current_node->left && !current_node->right) {
+                if (current_node->is_leaf()) {
                     // leaf
                     for (size_t i = 0; i < current_node->count; i++) {
                         out_str->push_back(current_node->ch_buff[i]);
@@ -184,7 +184,7 @@ public:
                     continue;
                 }
 
-                if (!current_node->left && !current_node->right) {
+                if (current_node->is_leaf()) {
                     // leaf
                     if (utils::in_range(traversed, n, traversed + current_node->count)) {
                         return current_node->ch_buff[n - traversed];
@@ -225,7 +225,7 @@ public:
                     continue;
                 }
                 
-                if (!current_node->left && !current_node->right) {
+                if (current_node->is_leaf()) {
                     // leaf
                     if (utils::in_range(traversed, n, traversed + current_node->count)) {
                         // add character here 
@@ -351,7 +351,7 @@ public:
                     continue;
                 }
 
-                if (!current_node->left && !current_node->right) {
+                if (current_node->is_leaf()) {
                     // leaf
                     if (utils::in_range(traversed, n, traversed + current_node->count)) {
                         

@@ -174,7 +174,7 @@ std::string read_string_from_file(const std::string &file_path) {
 int main() {
     test();
 
-    rope::rope<2> rope_test(read_string_from_file("../rope.hpp"));
+    rope::rope<20> rope_test(read_string_from_file("../rope.hpp"));
     std::cout << rope_test << '\n';
     std::cout << rope_test.node_count() << '\n';
 
