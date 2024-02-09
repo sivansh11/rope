@@ -395,6 +395,9 @@ public:
         rope_node::delete_rope_node(_rope_node, _rope_node_allocator);
     }
 
+    rope(rope&) = delete;
+    rope(const rope&) = delete;
+
     std::string to_string() const {
         return _rope_node->to_string();
     }
