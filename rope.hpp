@@ -18,13 +18,14 @@ bool in_range(_Tp start, _Tp n, _Tp end) {
 
 } // namespace utils
 
-
+// MAX_CH_BUFF_LENGTH is how much data to store per node
 template <size_t MAX_CH_BUFF_LENGTH, template <typename _Tp> typename _Alloc = std::allocator>
 class rope {
+    static_assert(MAX_CH_BUFF_LENGTH > 0);
 public:
     struct rope_node {
         rope_node *left, *right, *parent;
-        size_t count;  // if left == right == nullptr, then count is the number of elements in ch_buff
+        size_t count;  // if left == right == nullptr, then count is the number of elements in ch_buff, otherwise count is sum of children 
         char ch_buff[MAX_CH_BUFF_LENGTH]; 
         
         template <typename rope_node_allocator>
@@ -70,6 +71,11 @@ public:
         template <typename rope_node_allocator>
         static void insert(rope_node *&node, char ch, size_t n, rope_node_allocator& _rope_node_allocator) {
             insert_impl(node, ch, n, _rope_node_allocator);
+        }
+
+        template <typename rope_node_allocator>
+        static void erase(rope_node *&node, size_t n, rope_node_allocator& _rope_node_allocator) {
+            erase_impl(node, n, _rope_node_allocator);
         }
 
     private:
@@ -312,6 +318,69 @@ public:
                 }
             }
         }
+
+        template <typename rope_node_allocator>
+        static void erase_impl(rope_node *&node, size_t n, rope_node_allocator& _rope_node_allocator) {
+            if (n >= node->count) {
+                throw std::runtime_error("out of bounds");
+            }
+            rope_node *current_node;
+
+            size_t traversed = 0;
+            size_t stack_idx = 0;
+
+            rope_node *stack[64];
+
+            stack[stack_idx++] = node;
+
+            while (stack_idx) {
+                // pop
+                current_node = stack[--stack_idx];
+
+                // push
+                if (utils::in_range(traversed, n, traversed + current_node->count)) {
+                    if (current_node->right) stack[stack_idx++] = current_node->right;
+                    if (current_node->left) stack[stack_idx++] = current_node->left;
+                } else {
+                    // if skipping branch
+                    traversed += current_node->count;
+                    continue;
+                }
+
+                if (!current_node->left && !current_node->right) {
+                    // leaf
+                    if (utils::in_range(traversed, n, traversed + current_node->count)) {
+                        
+                        size_t idx = n - traversed;
+
+                        char temp[MAX_CH_BUFF_LENGTH];
+
+                        for (size_t i = 0; i < current_node->count; i++) {
+                            if (i < idx) {
+                                temp[i] = current_node->ch_buff[i];
+                            }
+                            if (i == idx) {
+                                // do nothing, skip
+                            }
+                            if (i > idx) {
+                                temp[i - 1] = current_node->ch_buff[i];
+                            }
+                        }
+                        std::memcpy(current_node->ch_buff, temp, current_node->count - 1);
+                        current_node->count--;
+
+                        while (current_node->parent) {
+                            current_node->parent->count = current_node->parent->left->count + current_node->parent->right->count;
+                            current_node = current_node->parent;
+                        }
+
+                        return;
+                    } else {
+                        traversed += current_node->count;
+                    }
+                }
+            }
+        }
     };
     
 public:
@@ -337,6 +406,11 @@ public:
 
     void insert(char ch, size_t n) {
         rope_node::insert(_rope_node, ch, n, _rope_node_allocator);
+    }
+
+    void erase(size_t n) {
+        // TODO: return iterator maybe
+        rope_node::erase(_rope_node, n, _rope_node_allocator);
     }
 
 private:

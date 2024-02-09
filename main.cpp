@@ -124,20 +124,26 @@ void test() {
         rope.insert('0', 6);
         assert(rope.to_string() == "hel00l0o");
     }
+    // erase test
+    {
+        rope::rope<2> rope("hello");
+        rope.erase(2);
+        assert(rope.to_string() == "helo");
+    }
 }
 
 int main() {
     test();
 
-    rope::rope<2, checking_allocator> rope("hello");
-    rope.concate(" people");
+    rope::rope<2, checking_allocator> rope("012345678");
     std::cout << rope.to_string() << '\n';
-    rope.insert('0', 3);
+    rope.erase(3);
     std::cout << rope.to_string() << '\n';
-    rope.insert('0', 4);
+    rope.erase(6);
     std::cout << rope.to_string() << '\n';
-    rope.insert('0', 6);
+    rope.erase(6);
     std::cout << rope.to_string() << '\n';
-    
+    // rope.erase(6);
+    // std::cout << rope.to_string() << '\n';
     return 0;
 }
