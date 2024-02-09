@@ -27,6 +27,10 @@ public:
         rope_node *left, *right, *parent;
         size_t count;  // if left == right == nullptr, then count is the number of elements in ch_buff, otherwise count is sum of children 
         char ch_buff[MAX_CH_BUFF_LENGTH]; 
+
+        bool is_leaf() {
+            return !left && !right;
+        }
         
         template <typename rope_node_allocator>
         static rope_node *new_rope_node(const std::string& str, rope_node_allocator& _rope_node_allocator) {
@@ -391,7 +395,7 @@ public:
         rope_node::delete_rope_node(_rope_node, _rope_node_allocator);
     }
 
-    std::string to_string() {
+    std::string to_string() const {
         return _rope_node->to_string();
     }
 
@@ -413,6 +417,156 @@ public:
         rope_node::erase(_rope_node, n, _rope_node_allocator);
     }
 
+    size_t size() {
+        return _rope_node->count;
+    }
+
+    size_t node_count() {
+        size_t node_count = 0;
+        rope_node *current_node;
+        size_t stack_idx = 0;
+        rope_node *stack[64];
+        stack[stack_idx++] = _rope_node;
+        while (stack_idx) {
+            current_node = stack[--stack_idx];
+            if (current_node->right) stack[stack_idx++] = current_node->right;
+            if (current_node->left) stack[stack_idx++] = current_node->left;
+            if (stack_idx >= 64) throw std::runtime_error("stack idx over 64");
+            node_count++;
+        }
+        return node_count;        
+    }
+
+    struct preorder_iterator {
+        using value_type = char;
+        using pointer = char *;
+        using reference = char&;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::forward_iterator_tag;
+
+        preorder_iterator(rope_node *p, size_t traversed) : root_node(p), traversed(traversed) {}
+
+        preorder_iterator(rope_node *p) : root_node(p) {
+            push(p);
+            while (should_continue()) {
+                current_node = pop();
+                if (current_node->right) push(current_node->right);
+                if (current_node->left) push(current_node->left);
+                if (current_node->is_leaf()) {
+                    if (current_node->count == 0) continue;
+                    current_ch = &current_node->ch_buff[current_count];
+                    traversed++;
+                    return;
+                }                    
+            }
+            throw std::runtime_error("something is wrong here");
+        }
+
+        reference operator*() { 
+            return *current_ch; 
+        }
+
+        preorder_iterator& operator++() {
+            // check if there are unread ch
+            if (current_count + 1 < current_node->count) {
+                current_count++;
+                traversed++;
+                current_ch = &current_node->ch_buff[current_count];
+                return *this;
+            }        
+
+            current_count = 0;
+
+            // all ch of current node is done, get next node
+            while (should_continue()) {
+                current_node = pop();
+                if (current_node->right) push(current_node->right);
+                if (current_node->left) push(current_node->left);
+                if (current_node->is_leaf()) break;                    
+            }
+
+            if (!should_continue() && !current_node->is_leaf()) throw std::runtime_error("something is wrong");
+            current_ch = &current_node->ch_buff[current_count];
+            traversed++;
+
+            return *this;
+        }
+        preorder_iterator operator++(int) {
+            auto result = *this;
+            operator++();
+            return result;
+        }
+        preorder_iterator& operator+=(difference_type n) {
+            for (size_t i = 0; i < n; i++) {
+                operator++();
+            }
+
+            return *this;
+        }
+        
+        friend bool operator==(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+            return lhs.traversed == rhs.traversed;
+        }
+        friend bool operator!=(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+            return lhs.traversed != rhs.traversed;
+        }
+        friend bool operator<(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+            return lhs.traversed < rhs.traversed;
+        }
+        friend bool operator>(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+            return rhs < lhs;
+        }
+        friend bool operator<=(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+            return !(rhs < lhs);
+        }
+        friend bool operator>=(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+            return !(lhs < rhs);
+        }
+
+        friend preorder_iterator operator+(const preorder_iterator& it, difference_type n) {
+            preorder_iterator temp = it;
+            temp += n;
+            return temp;
+        }
+        friend preorder_iterator operator+(difference_type n, const preorder_iterator& it) {
+            return it + n;
+        }
+        
+
+        size_t stack_idx = 0;
+        rope_node *stack[64];
+        rope_node *current_node = nullptr;
+        size_t current_count = 0;
+        size_t traversed = 0;
+        char *current_ch;
+
+        rope_node *root_node;
+
+    private:
+
+        void push(rope_node *node) {
+            stack[stack_idx++] = node;
+        }
+
+        rope_node *pop() {
+            current_node = stack[--stack_idx];
+            return current_node;
+        }
+
+        bool should_continue() {
+            return stack_idx;
+        } 
+        
+    };
+
+    preorder_iterator begin() {
+        return { _rope_node };
+    }
+
+    preorder_iterator end() {
+        return { _rope_node, _rope_node->count + 1 };
+    }
+
 private:
 
     rope_node_allocator _rope_node_allocator;
@@ -420,5 +574,11 @@ private:
 }; 
 
 } // namespace rope
+
+template <size_t MAX_CH_BUFF_LENGTH, template <typename _Tp> typename _Alloc>
+std::ostream& operator <<(std::ostream& o, const rope::rope<MAX_CH_BUFF_LENGTH, _Alloc>& rope) {
+    o << rope.to_string();
+    return o;
+}
 
 #endif
