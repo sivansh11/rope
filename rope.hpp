@@ -3,6 +3,8 @@
 
 #include <cstring>
 #include <string>
+#include <cmath>
+#include <cassert>
 #include <iostream>
 // #include <stack>
 
@@ -11,8 +13,8 @@ namespace rope {
 namespace utils {
 
 template <typename _Tp>
-bool in_range(_Tp start, _Tp n, _Tp end) {
-    if (n >= start && n < end) return true;
+bool in_range(_Tp start, _Tp pos, _Tp end) {
+    if (pos >= start && pos < end) return true;
     return false;
 }
 
@@ -73,31 +75,152 @@ public:
         }
 
         // returns \0 if failed
-        char at(size_t n) {
-            if (n >= count) {
-                // throw std::runtime_error("n > count");
+        char at(size_t pos) {
+            if (pos >= count) {
+                // throw std::runtime_error("pos > count");
                 return '\0';
             }
-            return at_impl(n);
+            return at_impl(pos);
         }
 
-        // this call can change the node
+        // this call can change the structure
         template <typename rope_node_allocator>
-        static void insert(rope_node *&node, char ch, size_t n, rope_node_allocator& _rope_node_allocator) {
-            insert_impl(node, ch, n, _rope_node_allocator);
+        static void insert(rope_node *&node, size_t pos, char ch, rope_node_allocator& _rope_node_allocator) {
+            const char *str = &ch;
+            set_slice(node, str, 1, pos, 0, _rope_node_allocator);
+        }
+
+        // this call can change the structure
+        // str should be null terminated
+        template <typename rope_node_allocator>
+        static void insert(rope_node *&node, size_t pos, const char *str, rope_node_allocator& _rope_node_allocator) {
+            size_t size = std::strlen(str);
+            set_slice(node, str, size, pos, 0, _rope_node_allocator);
         }
 
         template <typename rope_node_allocator>
-        static void erase(rope_node *&node, size_t n, rope_node_allocator& _rope_node_allocator) {
-            erase_impl(node, n, _rope_node_allocator);
+        static void erase(rope_node *&node, size_t pos, rope_node_allocator& _rope_node_allocator) {
+            set_slice(node, "", 0, pos, 1, _rope_node_allocator);
+        }
+
+        template <typename rope_node_allocator>
+        static void erase(rope_node *&node, size_t pos, size_t n, rope_node_allocator& _rope_node_allocator) {
+            set_slice(node, "", 0, pos, n, _rope_node_allocator);
+        }
+
+        static void slice(rope_node *node, size_t pos, size_t n, char *ret_str) {
+            slice_impl(node, pos, n, ret_str);
+        }
+
+        template <typename rope_node_allocator>
+        static void set_slice(rope_node *&node, const char *str, size_t size, size_t pos, size_t n, rope_node_allocator& _rope_node_allocator) {
+            set_slice_impl(node, str, size, pos, n, _rope_node_allocator);
         }
 
     private:
+        // struct postorder_stack_rope_node_traversal {
+        //     postorder_stack_rope_node_traversal(rope_node *root_node) {
+        //         push(root_node);
+        //     }
+
+        //     std::pair<rope_node *, size_t> next_node(size_t pos) {
+        //         // skipping
+        //         size_t traversed = 0;
+        //         while (should_continue()) {
+        //             current_node = pop();
+        //             if (utils::in_range(traversed, pos, traversed + current_node->count)) {
+        //                 if (current_node->left) push(current_node->left);
+        //                 if (current_node->right) push(current_node->right);
+        //                 if (current_node->is_leaf()) {
+        //                     return { current_node, traversed };
+        //                 } 
+        //             } else {
+        //                 traversed += current_node->count;
+        //             }
+        //         }
+        //     }
+
+        //     rope_node *next_node() {
+        //         // no skipping
+        //         while (should_continue()) {
+        //             current_node = pop();
+        //             if (current_node->left) push(current_node->left);
+        //             if (current_node->right) push(current_node->right);
+        //             if (current_node->is_leaf()) {
+        //                 return current_node;
+        //             }
+        //         }
+        //         return nullptr;
+        //     }
+
+        //     bool should_continue() { return stack_idx; }
+        //     void push(rope_node *node) { stack[stack_idx++] = node; }
+        //     rope_node *pop() { 
+        //         if (stack_idx == 0) throw std::runtime_error("can't pop from an empty stack");
+        //         return stack[--stack_idx]; 
+        //     }
+        // public:
+        //     rope_node *current_node;
+        // private:
+        //     size_t stack_idx = 0;
+        //     rope_node *stack[64];
+        // };
+
+        struct preorder_stack_rope_node_traversal {
+            
+            preorder_stack_rope_node_traversal(rope_node *root_node) {
+                push(root_node);
+            }
+
+            std::pair<rope_node *, size_t> next_node(size_t pos) {
+                size_t traversed = 0;
+                while (should_continue()) {
+                    current_node = pop();
+                    if (utils::in_range(traversed, pos, traversed + current_node->count)) {
+                        if (current_node->right) push(current_node->right);
+                        if (current_node->left) push(current_node->left);
+                        if (current_node->is_leaf()) {
+                            return { current_node, traversed };
+                        } 
+                    } else {
+                        traversed += current_node->count;
+                    }
+                }
+
+                return { nullptr, 0 };
+            }
+
+            rope_node *next_node() {
+                while (should_continue()) {
+                    current_node = pop();
+                    if (current_node->right) push(current_node->right);
+                    if (current_node->left) push(current_node->left);
+                    if (current_node->is_leaf()) {
+                        return current_node;
+                    } 
+                }
+                return nullptr;
+            }
+
+            bool should_continue() { return stack_idx; }
+            void push(rope_node *node) { stack[stack_idx++] = node; }
+            rope_node *pop() {
+                if (stack_idx == 0) throw std::runtime_error("cant pop from empty stack");
+                return stack[--stack_idx];
+            }
+
+        public:
+            rope_node *current_node;
+        private:
+            size_t stack_idx = 0;
+            rope_node *stack[64];
+        };
+
         // l is included
         // r is not included
         template <typename rope_node_allocator>
         static void new_rope_node_impl(rope_node *node, const char *str, size_t l, size_t r, rope_node_allocator& _rope_node_allocator) {
-            // TODO: remove recursion
+            // TODO: remove recursion maybe
             if ((r - l) > MAX_CH_BUFF_LENGTH) {
                 size_t m = (l + r) / 2;
 
@@ -144,255 +267,299 @@ public:
         }
 
         void to_string_impl(rope_node *node, std::string *out_str) {
-            rope_node *current_node;
-
-            size_t stack_idx = 0;
-            rope_node *stack[64];
-
-            stack[stack_idx++] = node;
-
-            while (stack_idx) {
-                current_node = stack[--stack_idx];
-
-                if (current_node->right) stack[stack_idx++] = current_node->right;
-                if (current_node->left) stack[stack_idx++] = current_node->left;
-
-                if (current_node->is_leaf()) {
-                    // leaf
-                    for (size_t i = 0; i < current_node->count; i++) {
-                        out_str->push_back(current_node->ch_buff[i]);
-                    }
-                }
+            preorder_stack_rope_node_traversal preorder_stack_rope_node_traversal(node);
+            rope_node *current_node = preorder_stack_rope_node_traversal.next_node();
+            while (current_node) {
+                for (size_t i = 0; i < current_node->count; i++) 
+                    out_str->push_back(current_node->ch_buff[i]);
+                current_node = preorder_stack_rope_node_traversal.next_node();
             }
         }
 
-        char at_impl(size_t n) {
-            // traversed is how much forward we have went
-            // n is the target 
-
-            rope_node *current_node;
-
-            size_t traversed = 0;
-
-            size_t stack_idx = 0;
-            // maybe use std::stack instead of this as 64 might be less
-            rope_node *stack[64];
-            // push
-            stack[stack_idx++] = this;
-
-            while (stack_idx) {
-                // pop
-                current_node = stack[--stack_idx];
-
-                // push
-                if (utils::in_range(traversed, n, traversed + current_node->count)) {
-                    if (current_node->right) stack[stack_idx++] = current_node->right;
-                    if (current_node->left) stack[stack_idx++] = current_node->left;
-                } else {
-                    // if skipping branch
-                    traversed += current_node->count;
-                    continue;
-                }
-
-                if (current_node->is_leaf()) {
-                    // leaf
-                    if (utils::in_range(traversed, n, traversed + current_node->count)) {
-                        return current_node->ch_buff[n - traversed];
-                    } else {
-                        traversed += current_node->count;
-                    }
-                }
-            }
-            return '\0';
+        char at_impl(size_t pos) {
+            preorder_stack_rope_node_traversal preorder_stack_rope_node_traversal(this);
+            auto [node, traversed] = preorder_stack_rope_node_traversal.next_node(pos);
+            if (node) 
+                return node->ch_buff[pos - traversed];
+            else return '\0';
         }
 
-        template <typename rope_node_allocator>
-        static void insert_impl(rope_node *&node, char ch, size_t n, rope_node_allocator& _rope_node_allocator) {
-            if (n >= node->count) {
-                auto r1 = node;
-                auto r2 = new_rope_node(std::string(&ch, 1), _rope_node_allocator);
-
-                node = concate(r1, r2, _rope_node_allocator);
-                
-                return;
-            } 
-            rope_node *current_node;
-
-            size_t traversed = 0;
-            size_t stack_idx = 0;
-            rope_node *stack[64];
-            stack[stack_idx++] = node;
-
-            while (stack_idx) {
-                // pop
-                current_node = stack[--stack_idx];
-
-                if (utils::in_range(traversed, n, traversed + current_node->count)) {
-                    if (current_node->right) stack[stack_idx++] = current_node->right;
-                    if (current_node->left) stack[stack_idx++] = current_node->left;
-                } else {
-                    traversed += current_node->count;
-                    continue;
-                }
-                
-                if (current_node->is_leaf()) {
-                    // leaf
-                    if (utils::in_range(traversed, n, traversed + current_node->count)) {
-                        // add character here 
-
-                        size_t idx = n - traversed;
-
-                        bool space_found = false;
-
-                        // either current node has space
-                        if (current_node->count < MAX_CH_BUFF_LENGTH) {
-
-                            char temp[MAX_CH_BUFF_LENGTH + 1];
-                            for (size_t i = 0; i < current_node->count + 1; i++) {
-                                if (i < idx) {
-                                    temp[i] = current_node->ch_buff[i];
-                                }
-                                if (i == idx) {
-                                    temp[i] = ch;
-                                }
-                                if (i > idx) {
-                                    temp[i] = current_node->ch_buff[i - 1];
-                                } 
-                            }
-                            std::memcpy(current_node->ch_buff, temp, current_node->count + 1);
-                            current_node->count++;
-                            space_found = true;
-                        }
-
-                        // current node is the left of parent, right of parent has space
-                        // need to put in left, but right has space
-                        if (current_node->parent->left == current_node && current_node->parent->right->count < MAX_CH_BUFF_LENGTH) {
-                            
-                            char temp[MAX_CH_BUFF_LENGTH * 2];
-                            for (size_t i = 0; i < current_node->count + current_node->parent->right->count + 1; i++) {
-                                if (i < idx) {
-                                    temp[i] = current_node->ch_buff[i];
-                                }
-                                if (i == idx) {
-                                    temp[i] = ch;
-                                }
-                                if (i > idx) {
-                                    if (i - 1 < current_node->count) {
-                                        temp[i] = current_node->ch_buff[i - 1];
-                                    } else {
-                                        temp[i] = current_node->parent->right->ch_buff[i - 1 - MAX_CH_BUFF_LENGTH];
-                                    }
-                                }
-                            }
-                            std::memcpy(current_node->ch_buff, temp, MAX_CH_BUFF_LENGTH);
-                            std::memcpy(current_node->parent->right->ch_buff, temp + MAX_CH_BUFF_LENGTH, current_node->parent->right->count + 1);
-                            current_node->parent->right->count++;
-                            space_found = true;
-                        }
-
-                        // no space found, create new children
-                        if (!space_found) {
-                            current_node->left = _rope_node_allocator.allocate(1);
-                            current_node->right = _rope_node_allocator.allocate(1);
-                            current_node->left->left = current_node->left->right = current_node->right->left = current_node->right->right = nullptr;
-
-                            current_node->left->parent = current_node->right->parent = current_node;
-                            char temp[MAX_CH_BUFF_LENGTH + 1];
-                            for (size_t i = 0; i < current_node->count + 1; i++) {
-                                if (i < idx) {
-                                    temp[i] = current_node->ch_buff[i];
-                                }
-                                if (i == idx) {
-                                    temp[i] = ch;
-                                }
-                                if (i > idx) {
-                                    temp[i] = current_node->ch_buff[i - 1];
-                                } 
-                            }
-
-                            std::memcpy(current_node->left->ch_buff, temp, MAX_CH_BUFF_LENGTH);
-                            std::memcpy(current_node->right->ch_buff, temp + MAX_CH_BUFF_LENGTH, 1);
-                            current_node->count++;
-                            current_node->left->count = MAX_CH_BUFF_LENGTH;
-                            current_node->right->count = 1;
-                        }
-
-                        // update all parents count
-                        while (current_node->parent) {
-                            current_node->parent->count = current_node->parent->left->count + current_node->parent->right->count;
-                            current_node = current_node->parent;
-                        }
-
-                        return;
-
-                    } else {
-                        traversed += current_node->count;
+        static void slice_impl(rope_node *&node, size_t pos, size_t n, char *ret_str) {
+            size_t idx = 0;
+            preorder_stack_rope_node_traversal preorder_stack_rope_node_traversal(node);
+            auto [current_node, traversed] = preorder_stack_rope_node_traversal.next_node(pos);
+            while (n) {
+                if (!current_node) std::runtime_error("something went wrong");
+                for (size_t i = pos - traversed; i < current_node->count; i++) {
+                    // TODO: remove this for release builds
+                    if (!utils::in_range(size_t(0), i, current_node->count)) {
+                        throw std::runtime_error("out of bounds");
                     }
+                    ret_str[idx++] = current_node->ch_buff[i];
+                    n--;
+                    if (!n) return;
                 }
+                pos += current_node->count - (pos - traversed);
+                traversed += current_node->count;
+                current_node = preorder_stack_rope_node_traversal.next_node();
             }
         }
 
         template <typename rope_node_allocator>
-        static void erase_impl(rope_node *&node, size_t n, rope_node_allocator& _rope_node_allocator) {
-            if (n >= node->count) {
+        static void set_slice_impl(rope_node *&node, const char *str, size_t size, size_t pos, size_t n, rope_node_allocator& _rope_node_allocator) {
+            // TODO add bound checks
+            if (pos > node->count || pos + n > node->count) {
                 throw std::runtime_error("out of bounds");
             }
-            rope_node *current_node;
+            preorder_stack_rope_node_traversal preorder_stack_rope_node_traversal(node);
+            auto [current_node, traversed] = preorder_stack_rope_node_traversal.next_node(pos);
 
-            size_t traversed = 0;
-            size_t stack_idx = 0;
+            if (current_node) {
+                size_t overrides_left = size;
+                size_t str_idx = 0;
 
-            rope_node *stack[64];
+                if (size < n) {
+                    size_t num_nodes = size_t(std::floor(float(size) / float(MAX_CH_BUFF_LENGTH))) + 2;
+                    rope_node *nodes_affected[num_nodes];
+                    size_t node_idx = 0;
 
-            stack[stack_idx++] = node;
+                    // n is always > overrides left
+                    while (current_node) {
+                        nodes_affected[node_idx++] = current_node;
+                        if (node_idx > num_nodes) throw std::runtime_error("something is fucked up");
+                        size_t idx = pos - traversed;
+                        bool ignore = false;
 
-            while (stack_idx) {
-                // pop
-                current_node = stack[--stack_idx];
+                        // things that can happen per node
 
-                // push
-                if (utils::in_range(traversed, n, traversed + current_node->count)) {
-                    if (current_node->right) stack[stack_idx++] = current_node->right;
-                    if (current_node->left) stack[stack_idx++] = current_node->left;
-                } else {
-                    // if skipping branch
-                    traversed += current_node->count;
-                    continue;
-                }
-
-                if (current_node->is_leaf()) {
-                    // leaf
-                    if (utils::in_range(traversed, n, traversed + current_node->count)) {
-                        
-                        size_t idx = n - traversed;
-
-                        char temp[MAX_CH_BUFF_LENGTH];
-
-                        for (size_t i = 0; i < current_node->count; i++) {
-                            if (i < idx) {
-                                temp[i] = current_node->ch_buff[i];
-                            }
-                            if (i == idx) {
-                                // do nothing, skip
-                            }
-                            if (i > idx) {
-                                temp[i - 1] = current_node->ch_buff[i];
+                        // n and overrides left >= current node count - idx
+                            // just override like normal
+                        if (!ignore) {
+                            if (n >= current_node->count - idx && overrides_left >= current_node->count - idx) {
+                                for (size_t i = idx; i < current_node->count; i++) {
+                                    current_node->ch_buff[i] = str[str_idx++];
+                                    n--;
+                                    overrides_left--;
+                                    pos++;
+                                }
+                                traversed += current_node->count;
+                                ignore = true;
                             }
                         }
-                        std::memcpy(current_node->ch_buff, temp, current_node->count - 1);
-                        current_node->count--;
 
-                        while (current_node->parent) {
-                            current_node->parent->count = current_node->parent->left->count + current_node->parent->right->count;
-                            current_node = current_node->parent;
+                        // n > current node count - idx but overrides left is < current node count - idx
+                            // trim the current node count
+                        if (!ignore) {
+                            if (n >= current_node->count - idx && overrides_left < current_node->count - idx) {
+                                size_t i = idx;
+                                for (; i < current_node->count; i++) {
+                                    if (overrides_left) {
+                                        current_node->ch_buff[i] = str[str_idx++];
+                                        n--;
+                                        overrides_left--;
+                                        pos++;
+                                    } else {
+                                        n -= current_node->count - i;
+                                        assert(n < 1000000); // dumb overflow check, TODO: remove this
+                                        break;
+                                    }
+                                }
+                                if (overrides_left) traversed += current_node->count;
+                                current_node->count = i;
+                                ignore = true;
+                            }
                         }
 
-                        return;
-                    } else {
-                        traversed += current_node->count;
+                        // both n and overrides left is < current node count - idx
+                            // I need to pull back the buffer
+                            // trim the current node count
+                        if (!ignore) {
+                            if (n < current_node->count - idx && overrides_left < current_node->count - idx) {
+                                size_t i = idx;
+                                size_t pull_back_from = size_t(-1);
+                                for (; i < current_node->count; i++) {
+                                    if (overrides_left) {
+                                        current_node->ch_buff[i] = str[str_idx++];
+                                        n--;
+                                        overrides_left--;
+                                        idx++;
+                                    } else {
+                                        if (n > i)
+                                            pull_back_from = n - i;
+                                        else 
+                                            pull_back_from = n + i;
+                                        n = 0;
+                                        break;
+                                    }
+                                }
+                                // pos += current_node->count - idx;
+                                // traversed += current_node->count;
+                                std::memcpy(current_node->ch_buff + idx, current_node->ch_buff + pull_back_from, current_node->count - pull_back_from);
+                                current_node->count = current_node->count - (pull_back_from - idx);
+                            }
+                        }
+                        if (!n) break;
+                        current_node = preorder_stack_rope_node_traversal.next_node();
                     }
+
+                    // TODO: parent node count update optimisation 
+                    for (size_t i = 0; i < node_idx; i++) {
+                        rope_node *node = nodes_affected[i];
+                        while (node->parent) {
+                            node->parent->count = node->parent->left->count + node->parent->right->count;
+                            node = node->parent;
+                        }
+                    }
+                    return;
                 }
-            }
+                
+                if (size == n) {
+                    while (current_node) {
+                        size_t idx = pos - traversed;
+                        for (size_t i = idx; i < current_node->count; i++) {
+                            current_node->ch_buff[i] = str[str_idx++];
+                            n--;
+                            pos++;
+                            if (!n) return;
+                        }
+                        if (!n) return;
+                        traversed += current_node->count;
+                        current_node = preorder_stack_rope_node_traversal.next_node();
+                    }
+                    throw std::runtime_error("something went wrong");
+                }
+
+                // size > n
+                if (size > n) {
+                    // n < overrides_left
+                    size_t num_nodes = size_t(std::floor(float(size) / float(MAX_CH_BUFF_LENGTH))) + 2;
+                    rope_node *nodes_affected[num_nodes];
+                    size_t node_idx = 0;
+
+                    while (current_node) {
+                        nodes_affected[node_idx++] = current_node;
+                        if (node_idx > num_nodes) throw std::runtime_error("something is fucked up");
+                        size_t idx = pos - traversed;
+                        size_t i = idx;
+                        if (!n) break;
+                        for (; i < current_node->count; i++) {
+                            current_node->ch_buff[i] = str[str_idx++];
+                            n--;
+                            overrides_left--;
+                            pos++;
+                            if (!n) break;
+                        }
+                        if (n) traversed += current_node->count;
+                        if (!n) break;
+                        if (current_node->count < MAX_CH_BUFF_LENGTH) {
+                            size_t new_node_count = current_node->count;
+                            size_t i = 0;
+                            while (i < MAX_CH_BUFF_LENGTH - current_node->count) {
+                                current_node->ch_buff[current_node->count + i] = str[str_idx++];
+                                n--;
+                                i++;
+                                overrides_left--;
+                                new_node_count++;
+                                if (!n) break;
+                            }
+                            rope_node *next_node = preorder_stack_rope_node_traversal.next_node();
+                            std::memcpy(next_node->ch_buff, next_node->ch_buff + i, next_node->count - 1);
+                            next_node->count -= i;
+                            current_node->count = new_node_count;
+                            current_node = next_node;
+                        }
+                        if (!n) break;
+                        current_node = preorder_stack_rope_node_traversal.next_node();
+                    }
+
+                    // now n is 0
+
+                    size_t data_left = overrides_left;
+
+                    // // shuffling of data
+                    size_t idx = pos - traversed;
+
+                    char temp[current_node->count - idx + data_left];
+
+                    for (size_t i = 0; i < current_node->count - idx + data_left; i++) {
+                        if (i < data_left) temp[i] = str[str_idx++];
+                        else temp[i] = current_node->ch_buff[i - data_left + idx];
+                    }
+
+                    std::memcpy(current_node->ch_buff + idx, temp, current_node->count - idx);
+
+                    char new_str[data_left];
+                    std::memcpy(new_str, temp + current_node->count - idx, data_left);
+
+                    // check if current node has space for all the left over data
+                    if (current_node->count < MAX_CH_BUFF_LENGTH && MAX_CH_BUFF_LENGTH - current_node->count >= data_left) {
+                        std::memcpy(current_node->ch_buff + current_node->count, new_str, data_left);
+                        current_node->count += data_left;
+                    } else {
+                        rope_node *next_node = preorder_stack_rope_node_traversal.current_node;
+                        if (next_node && (current_node->count + next_node->count + data_left <= MAX_CH_BUFF_LENGTH * 2)) {
+                            nodes_affected[node_idx++] = next_node;
+                            if (node_idx > num_nodes) throw std::runtime_error("something is fucked up");
+
+                            char temp[2 * MAX_CH_BUFF_LENGTH];
+                            size_t current_idx = 0, next_idx = 0;
+                            str_idx = 0;
+                            for (size_t i = 0; i < current_node->count + next_node->count + data_left; i++) {
+                                if (i < current_node->count) temp[i] = current_node->ch_buff[current_idx++];
+                                else if (i - current_node->count < next_node->count) temp[i] = new_str[str_idx++];
+                                else temp[i] = next_node->ch_buff[next_idx++];
+                            }
+                            std::memcpy(current_node->ch_buff, temp, MAX_CH_BUFF_LENGTH);
+                            std::memcpy(next_node->ch_buff, temp + MAX_CH_BUFF_LENGTH, current_node->count + next_node->count + data_left - MAX_CH_BUFF_LENGTH);
+                            current_node->count = MAX_CH_BUFF_LENGTH;
+                            next_node->count = current_node->count + next_node->count + data_left - MAX_CH_BUFF_LENGTH;
+                        } else {
+                            char temp[current_node->count + data_left];
+
+                            size_t current_idx = 0;
+                            str_idx = 0;
+                            for (size_t i = 0; i < current_node->count + data_left; i++) {
+                                if (i < current_node->count) temp[i] = current_node->ch_buff[current_idx++];
+                                else temp[i] = new_str[str_idx++];
+                            }
+
+                            rope_node *new_node = _rope_node_allocator.allocate(1);
+                            new_node->parent = nullptr;
+                            new_rope_node_impl(new_node, temp, 0, current_node->count + data_left, _rope_node_allocator);
+
+                            rope_node *parent = current_node->parent;
+
+                            delete_rope_node_impl(current_node, _rope_node_allocator);
+
+                            for (size_t i = 0; i < node_idx; i++) {
+                                if (nodes_affected[i] == current_node) {
+                                    nodes_affected[i] = new_node;
+                                }
+                            }
+
+                            if (parent) {
+                                if (!parent->left) parent->left = new_node;
+                                if (!parent->right) parent->right = new_node;
+
+                                new_node->parent = parent;
+                            } else {
+                                node = new_node;
+                            }
+                        }
+                    }
+
+                    // TODO: parent node count update optimisation 
+                    for (size_t i = 0; i < node_idx; i++) {
+                        rope_node *node = nodes_affected[i];
+                        while (node->parent) {
+                            node->parent->count = node->parent->left->count + node->parent->right->count;
+                            node = node->parent;
+                        }
+                    }
+                    return;
+                }
+
+            } else std::runtime_error("something went wrong");
         }
     };
     
@@ -416,19 +583,24 @@ public:
         _rope_node = rope_node::concate(_rope_node, new_rope_node, _rope_node_allocator);
     }
     
-    char at(size_t n) {
-        return _rope_node->at(n);
+    char at(size_t pos) {
+        return _rope_node->at(pos);
     }
 
-    void insert(char ch, size_t n) {
-        rope_node::insert(_rope_node, ch, n, _rope_node_allocator);
+    // str should be null terminated
+    void insert(size_t pos, const char *str) {
+        rope_node::insert(_rope_node, pos, str, _rope_node_allocator);
     }
 
-    void erase(size_t n) {
+    void erase(size_t pos) {
         // TODO: return iterator maybe
-        rope_node::erase(_rope_node, n, _rope_node_allocator);
+        rope_node::erase(_rope_node, pos, _rope_node_allocator);
     }
 
+    void erase(size_t pos, size_t n) {
+        rope_node::erase(_rope_node, pos, n, _rope_node_allocator);
+    }
+    
     size_t size() {
         return _rope_node->count;
     }
@@ -448,17 +620,35 @@ public:
         }
         return node_count;        
     }
+    
+    void reorder() {
+        std::string temp_string = to_string();
+        rope_node::delete_rope_node(_rope_node, _rope_node_allocator);
+        _rope_node = rope_node::new_rope_node(temp_string, _rope_node_allocator);
+    }
 
-    struct preorder_iterator {
+    // TODO: add an overlaod that takes in a char * and doesnt return
+    std::string slice(size_t pos, size_t n) {
+        char *temp = reinterpret_cast<char *>(alloca(n));
+        rope_node::slice(_rope_node, pos, n, temp);
+        return std::string(temp, n);
+    }
+
+    void set_slice(const std::string& str, size_t pos, size_t n) {
+        rope_node::set_slice(_rope_node, str.data(), str.size(), pos, n, _rope_node_allocator);
+    }
+
+    // essentially a preorder character iterator
+    struct iterator {
         using value_type = char;
         using pointer = char *;
         using reference = char&;
         using difference_type = std::ptrdiff_t;
         using iterator_category = std::forward_iterator_tag;
 
-        preorder_iterator(rope_node *p, size_t traversed) : root_node(p), traversed(traversed) {}
+        iterator(rope_node *p, size_t traversed) : root_node(p), traversed(traversed) {}
 
-        preorder_iterator(rope_node *p) : root_node(p) {
+        iterator(rope_node *p) : root_node(p) {
             push(p);
             while (should_continue()) {
                 current_node = pop();
@@ -478,7 +668,7 @@ public:
             return *current_ch; 
         }
 
-        preorder_iterator& operator++() {
+        iterator& operator++() {
             // check if there are unread ch
             if (current_count + 1 < current_node->count) {
                 current_count++;
@@ -503,45 +693,45 @@ public:
 
             return *this;
         }
-        preorder_iterator operator++(int) {
+        iterator operator++(int) {
             auto result = *this;
             operator++();
             return result;
         }
-        preorder_iterator& operator+=(difference_type n) {
-            for (size_t i = 0; i < n; i++) {
+        iterator& operator+=(difference_type pos) {
+            for (size_t i = 0; i < pos; i++) {
                 operator++();
             }
 
             return *this;
         }
         
-        friend bool operator==(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+        friend bool operator==(const iterator& lhs, const iterator& rhs) {
             return lhs.traversed == rhs.traversed;
         }
-        friend bool operator!=(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+        friend bool operator!=(const iterator& lhs, const iterator& rhs) {
             return lhs.traversed != rhs.traversed;
         }
-        friend bool operator<(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+        friend bool operator<(const iterator& lhs, const iterator& rhs) {
             return lhs.traversed < rhs.traversed;
         }
-        friend bool operator>(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+        friend bool operator>(const iterator& lhs, const iterator& rhs) {
             return rhs < lhs;
         }
-        friend bool operator<=(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+        friend bool operator<=(const iterator& lhs, const iterator& rhs) {
             return !(rhs < lhs);
         }
-        friend bool operator>=(const preorder_iterator& lhs, const preorder_iterator& rhs) {
+        friend bool operator>=(const iterator& lhs, const iterator& rhs) {
             return !(lhs < rhs);
         }
 
-        friend preorder_iterator operator+(const preorder_iterator& it, difference_type n) {
-            preorder_iterator temp = it;
-            temp += n;
+        friend iterator operator+(const iterator& it, difference_type pos) {
+            iterator temp = it;
+            temp += pos;
             return temp;
         }
-        friend preorder_iterator operator+(difference_type n, const preorder_iterator& it) {
-            return it + n;
+        friend iterator operator+(difference_type pos, const iterator& it) {
+            return it + pos;
         }
         
 
@@ -571,11 +761,11 @@ public:
         
     };
 
-    preorder_iterator begin() {
+    iterator begin() {
         return { _rope_node };
     }
 
-    preorder_iterator end() {
+    iterator end() {
         return { _rope_node, _rope_node->count + 1 };
     }
 

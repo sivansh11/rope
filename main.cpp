@@ -6,11 +6,15 @@
 #include <cassert>
 #include <fstream>
 #include <sstream>
+#include <functional>
+#include <chrono>
+#include <thread>
 
 // didnt know what to call this, its just an allocater that checks if all the allocations are deallocated
 template <typename _Tp>
 class checking_allocator {
 public:
+    using value_type = _Tp;
     checking_allocator() = default;
     ~checking_allocator() noexcept(false) {
         if (_allocations.size()) {
@@ -18,7 +22,6 @@ public:
         }
     }
 
-    typedef _Tp value_type;
     value_type *allocate(size_t n) {
         value_type *p = reinterpret_cast<value_type *>(::operator new(n * sizeof(value_type)));
         _allocations.insert({size_t(p), n});
@@ -40,6 +43,7 @@ public:
 private:
     std::unordered_map<size_t, size_t> _allocations;
 };
+
 
 void test() {
     // test to_string and at
@@ -109,21 +113,21 @@ void test() {
     // insert test
     {
         rope::rope<2, checking_allocator> rope("hello");
-        rope.insert('0', 3);
+        rope.insert(3, "0");
         assert(rope.to_string() == "hel0lo");
-        rope.insert('0', 4);
+        rope.insert(4, "0");
         assert(rope.to_string() == "hel00lo");
-        rope.insert('0', 6);
+        rope.insert(6, "0");
         assert(rope.to_string() == "hel00l0o");
     }
     // insert test
     {
         rope::rope<3, checking_allocator> rope("hello");
-        rope.insert('0', 3);
+        rope.insert(3, "0");
         assert(rope.to_string() == "hel0lo");
-        rope.insert('0', 4);
+        rope.insert(4, "0");
         assert(rope.to_string() == "hel00lo");
-        rope.insert('0', 6);
+        rope.insert(6, "0");
         assert(rope.to_string() == "hel00l0o");
     }
     // erase test
@@ -155,6 +159,121 @@ void test() {
         }
         assert(rope.to_string() == "00000");
     }
+    // str vs rope
+    {
+        std::string str("hello");
+        rope::rope<2> rope("hello");
+        str.insert(3, "0");
+        rope.insert(3, "0");
+        assert(rope.to_string() == str);
+        str.erase(2, 2);
+        rope.erase(2, 2);
+        assert(rope.to_string() == str);
+    }
+    // slice
+    // TODO: add test for slice
+    // set_slice same size 
+    {
+        rope::rope<1> rope1("0123456789");
+        rope::rope<2> rope2("0123456789");
+        rope::rope<3> rope3("0123456789");
+        rope::rope<4> rope4("0123456789");
+        rope::rope<5> rope5("0123456789");
+        rope::rope<6> rope6("0123456789");
+        rope::rope<7> rope7("0123456789");
+        rope::rope<8> rope8("0123456789");
+        rope::rope<9> rope9("0123456789");
+        rope::rope<10> rope10("0123456789");
+        rope1.set_slice("abc", 3, 3);
+        rope2.set_slice("abc", 3, 3);
+        rope3.set_slice("abc", 3, 3);
+        rope4.set_slice("abc", 3, 3);
+        rope5.set_slice("abc", 3, 3);
+        rope6.set_slice("abc", 3, 3);
+        rope7.set_slice("abc", 3, 3);
+        rope8.set_slice("abc", 3, 3);
+        rope9.set_slice("abc", 3, 3);
+        rope10.set_slice("abc", 3, 3);
+        assert(rope1.to_string() == "012abc6789");
+        assert(rope2.to_string() == "012abc6789");
+        assert(rope3.to_string() == "012abc6789");
+        assert(rope4.to_string() == "012abc6789");
+        assert(rope5.to_string() == "012abc6789");
+        assert(rope6.to_string() == "012abc6789");
+        assert(rope7.to_string() == "012abc6789");
+        assert(rope8.to_string() == "012abc6789");
+        assert(rope9.to_string() == "012abc6789");
+        assert(rope10.to_string() == "012abc6789");
+    }
+    // set_slice size of string is less than n
+    {
+        rope::rope<1> rope1("0123456789");
+        rope::rope<2> rope2("0123456789");
+        rope::rope<3> rope3("0123456789");
+        rope::rope<4> rope4("0123456789");
+        rope::rope<5> rope5("0123456789");
+        rope::rope<6> rope6("0123456789");
+        rope::rope<7> rope7("0123456789");
+        rope::rope<8> rope8("0123456789");
+        rope::rope<9> rope9("0123456789");
+        rope::rope<10> rope10("0123456789");
+        rope1.set_slice("ab", 3, 3);
+        rope2.set_slice("ab", 3, 3);
+        rope3.set_slice("ab", 3, 3);
+        rope4.set_slice("ab", 3, 3);
+        rope5.set_slice("ab", 3, 3);
+        rope6.set_slice("ab", 3, 3);
+        rope7.set_slice("ab", 3, 3);
+        rope8.set_slice("ab", 3, 3);
+        rope9.set_slice("ab", 3, 3);
+        rope10.set_slice("ab", 3, 3);
+        assert(rope1.to_string() == "012ab6789");
+        assert(rope2.to_string() == "012ab6789");
+        assert(rope3.to_string() == "012ab6789");
+        assert(rope4.to_string() == "012ab6789");
+        assert(rope5.to_string() == "012ab6789");
+        assert(rope6.to_string() == "012ab6789");
+        assert(rope7.to_string() == "012ab6789");
+        assert(rope8.to_string() == "012ab6789");
+        assert(rope9.to_string() == "012ab6789");
+        assert(rope10.to_string() == "012ab6789");
+    }
+        // set_slice size of string is greater than n
+    {
+        rope::rope<1> rope1("0123456789");
+        rope::rope<2> rope2("0123456789");
+        rope::rope<3> rope3("0123456789");
+        rope::rope<4> rope4("0123456789");
+        rope::rope<5> rope5("0123456789");
+        rope::rope<6> rope6("0123456789");
+        rope::rope<7> rope7("0123456789");
+        rope::rope<8> rope8("0123456789");
+        rope::rope<9> rope9("0123456789");
+        rope::rope<10> rope10("0123456789");
+        rope::rope<20> rope20("0123456789");
+        rope1.set_slice("abcd", 3, 3);
+        rope2.set_slice("abcd", 3, 3);
+        rope3.set_slice("abcd", 3, 3);
+        rope4.set_slice("abcd", 3, 3);
+        rope5.set_slice("abcd", 3, 3);
+        rope6.set_slice("abcd", 3, 3);
+        rope7.set_slice("abcd", 3, 3);
+        rope8.set_slice("abcd", 3, 3);
+        rope9.set_slice("abcd", 3, 3);
+        rope10.set_slice("abcd", 3, 3);
+        rope20.set_slice("abcd", 3, 3);
+        assert(rope1.to_string() == "012abcd6789");
+        assert(rope2.to_string() == "012abcd6789");
+        assert(rope3.to_string() == "012abcd6789");
+        assert(rope4.to_string() == "012abcd6789");
+        assert(rope5.to_string() == "012abcd6789");
+        assert(rope6.to_string() == "012abcd6789");
+        assert(rope7.to_string() == "012abcd6789");
+        assert(rope8.to_string() == "012abcd6789");
+        assert(rope9.to_string() == "012abcd6789");
+        assert(rope10.to_string() == "012abcd6789");
+        assert(rope20.to_string() == "012abcd6789");
+    }
 }
 
 // TODO: use std::path
@@ -174,9 +293,10 @@ std::string read_string_from_file(const std::string &file_path) {
 int main() {
     test();
 
-    rope::rope<20> rope_test(read_string_from_file("../rope.hpp"));
+    rope::rope<2, checking_allocator> rope_test(read_string_from_file("../rope.hpp"));
     std::cout << rope_test << '\n';
     std::cout << rope_test.node_count() << '\n';
+    rope_test.reorder();
 
     return 0;
 }
