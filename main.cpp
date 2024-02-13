@@ -1,4 +1,4 @@
-#include "new_rope.hpp"
+#include "rope.hpp"
 
 #include <iostream>
 #include <unordered_map>
@@ -44,123 +44,123 @@ private:
     std::unordered_map<size_t, size_t> _allocations;
 };
 
-void test_new_rope() {
+void test_rope() {
     // set slice end append
     {
-        new_rope::rope_t<7, checking_allocator> r("01234567");
+        rope::rope_t<7, checking_allocator> r("01234567");
         r.set_slice("8", 1, 8, 0);
         assert(r.to_string() == "012345678");
     }
     {
-        new_rope::rope_t<8, checking_allocator> r("01234567");
+        rope::rope_t<8, checking_allocator> r("01234567");
         r.set_slice("8", 1, 8, 0);
         assert(r.to_string() == "012345678");
     }
     {
-        new_rope::rope_t<9, checking_allocator> r("01234567");
+        rope::rope_t<9, checking_allocator> r("01234567");
         r.set_slice("8", 1, 8, 0);
         assert(r.to_string() == "012345678");
     }
     {
-        new_rope::rope_t<7, checking_allocator> r("01234567");
+        rope::rope_t<7, checking_allocator> r("01234567");
         r.set_slice("89", 2, 8, 0);
         assert(r.to_string() == "0123456789");
     }
     {
-        new_rope::rope_t<8, checking_allocator> r("01234567");
+        rope::rope_t<8, checking_allocator> r("01234567");
         r.set_slice("89", 2, 8, 0);
         assert(r.to_string() == "0123456789");
     }
     {
-        new_rope::rope_t<9, checking_allocator> r("01234567");
+        rope::rope_t<9, checking_allocator> r("01234567");
         r.set_slice("89", 2, 8, 0);
         assert(r.to_string() == "0123456789");
     }
     // set slice size == n
     {
-        new_rope::rope_t<1, checking_allocator> r("012345");
+        rope::rope_t<1, checking_allocator> r("012345");
         r.set_slice("a", 1, 3, 1);
         assert(r.to_string() == "012a45"); 
     }
     {
-        new_rope::rope_t<2, checking_allocator> r("012345");
+        rope::rope_t<2, checking_allocator> r("012345");
         r.set_slice("a", 1, 3, 1);
         assert(r.to_string() == "012a45"); 
     }
     {
-        new_rope::rope_t<3, checking_allocator> r("012345");
+        rope::rope_t<3, checking_allocator> r("012345");
         r.set_slice("a", 1, 3, 1);
         assert(r.to_string() == "012a45"); 
     }
     {
-        new_rope::rope_t<1, checking_allocator> r("012345");
+        rope::rope_t<1, checking_allocator> r("012345");
         r.set_slice("ab", 2, 3, 2);
         assert(r.to_string() == "012ab5"); 
     }
     {
-        new_rope::rope_t<2, checking_allocator> r("012345");
+        rope::rope_t<2, checking_allocator> r("012345");
         r.set_slice("ab", 2, 3, 2);
         assert(r.to_string() == "012ab5"); 
     }
     {
-        new_rope::rope_t<3, checking_allocator> r("012345");
+        rope::rope_t<3, checking_allocator> r("012345");
         r.set_slice("ab", 2, 3, 2);
         assert(r.to_string() == "012ab5"); 
     }
     {
-        new_rope::rope_t<4, checking_allocator> r("012345");
+        rope::rope_t<4, checking_allocator> r("012345");
         r.set_slice("ab", 2, 3, 2);
         assert(r.to_string() == "012ab5"); 
     }
     {
-        new_rope::rope_t<6, checking_allocator> r("012345");
+        rope::rope_t<6, checking_allocator> r("012345");
         r.set_slice("ab", 2, 3, 2);
         assert(r.to_string() == "012ab5"); 
     }
 
     // set slice size < n case 2
     {
-        new_rope::rope_t<8, checking_allocator> r("01234567");
+        rope::rope_t<8, checking_allocator> r("01234567");
         r.set_slice("ab", 2, 3, 3);
         assert(r.to_string() == "012ab67");
     }
     // set slice size < n case 4
     {
-        new_rope::rope_t<4, checking_allocator> r("01234567");
+        rope::rope_t<4, checking_allocator> r("01234567");
         r.set_slice("ab", 2, 2, 3);
         assert(r.to_string() == "01ab567");
     }
     // set slice size < n case 1
     {
-        new_rope::rope_t<4, checking_allocator> r("01234567");
+        rope::rope_t<4, checking_allocator> r("01234567");
         r.set_slice("abc", 3, 2, 6);
         assert(r.to_string() == "01abc");
     }
     // set slice size < n case 3 
     {
-        new_rope::rope_t<4, checking_allocator> r("01234567");
+        rope::rope_t<4, checking_allocator> r("01234567");
         r.set_slice("ab", 2, 2, 6);
         assert(r.to_string() == "01ab");
     }
     // set slice size < n no writes 
     {
-        new_rope::rope_t<4, checking_allocator> r("01234567");
+        rope::rope_t<4, checking_allocator> r("01234567");
         r.set_slice("", 0, 4, 4);
         assert(r.to_string() == "0123");
     }
         // set_slice size > n
     {
-        new_rope::rope_t<1, checking_allocator> rope1("0123456789");
-        new_rope::rope_t<2, checking_allocator> rope2("0123456789");
-        new_rope::rope_t<3, checking_allocator> rope3("0123456789");
-        new_rope::rope_t<4, checking_allocator> rope4("0123456789");
-        new_rope::rope_t<5, checking_allocator> rope5("0123456789");
-        new_rope::rope_t<6, checking_allocator> rope6("0123456789");
-        new_rope::rope_t<7, checking_allocator> rope7("0123456789");
-        new_rope::rope_t<8, checking_allocator> rope8("0123456789");
-        new_rope::rope_t<9, checking_allocator> rope9("0123456789");
-        new_rope::rope_t<10, checking_allocator> rope10("0123456789");
-        new_rope::rope_t<20, checking_allocator> rope20("0123456789");
+        rope::rope_t<1, checking_allocator> rope1("0123456789");
+        rope::rope_t<2, checking_allocator> rope2("0123456789");
+        rope::rope_t<3, checking_allocator> rope3("0123456789");
+        rope::rope_t<4, checking_allocator> rope4("0123456789");
+        rope::rope_t<5, checking_allocator> rope5("0123456789");
+        rope::rope_t<6, checking_allocator> rope6("0123456789");
+        rope::rope_t<7, checking_allocator> rope7("0123456789");
+        rope::rope_t<8, checking_allocator> rope8("0123456789");
+        rope::rope_t<9, checking_allocator> rope9("0123456789");
+        rope::rope_t<10, checking_allocator> rope10("0123456789");
+        rope::rope_t<20, checking_allocator> rope20("0123456789");
         rope1.set_slice("abcd", 4, 3, 3);
         rope2.set_slice("abcd", 4, 3, 3);
         rope3.set_slice("abcd", 4, 3, 3);
@@ -188,11 +188,11 @@ void test_new_rope() {
 
 int main() {
 
-    new_rope::rope_t<5, checking_allocator> r("01234567");
+    rope::rope_t<5, checking_allocator> r("01234567");
     std::string str = "abcd";
     r.set_slice(str.c_str(), str.size(), 2, 3);
     std::cout << r << '\n';
 
-    test_new_rope();
+    test_rope();
     return 0;
 }
