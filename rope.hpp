@@ -186,7 +186,7 @@ public:
                         traversed += current_node->count;
                     }
                 }
-
+                current_node = nullptr;
                 return { nullptr, 0 };
             }
 
@@ -199,7 +199,8 @@ public:
                         return current_node;
                     } 
                 }
-                return nullptr;
+                current_node = nullptr;
+                return current_node;
             }
 
             bool should_continue() { return stack_idx; }
@@ -312,6 +313,29 @@ public:
                 throw std::runtime_error("out of bounds");
             }
             preorder_stack_rope_node_traversal preorder_stack_rope_node_traversal(node);
+            if (pos == node->count) {
+                auto [current_node, traversed] = preorder_stack_rope_node_traversal.next_node(pos - 1);
+                assert(current_node);
+                size_t str_idx = 0;
+                if (current_node->count < MAX_CH_BUFF_LENGTH) {
+                    for (size_t i = current_node->count; i < MAX_CH_BUFF_LENGTH; i++) {
+                        current_node->ch_buff[i] = str[str_idx++];
+                        if (str_idx == size) break;
+                    }
+                    current_node->count += str_idx;
+                }
+                if (str_idx == size) {
+                    return;
+                }
+                // TODO: try fitting it into the existing nodes before creating new node ?
+                rope_node *r1 = node;
+                rope_node *r2 = _rope_node_allocator.allocate(1);
+                r2->parent = nullptr;
+                new_rope_node_impl(r2, str, str_idx, size, _rope_node_allocator);
+                node = concate(r1, r2, _rope_node_allocator);
+                return;
+            }
+            
             auto [current_node, traversed] = preorder_stack_rope_node_traversal.next_node(pos);
 
             if (current_node) {
@@ -438,6 +462,7 @@ public:
 
                     while (current_node) {
                         nodes_affected[node_idx++] = current_node;
+                        preorder_stack_rope_node_traversal.next_node();
                         if (node_idx > num_nodes) throw std::runtime_error("something is fucked up");
                         size_t idx = pos - traversed;
                         size_t i = idx;
@@ -462,14 +487,14 @@ public:
                                 new_node_count++;
                                 if (!n) break;
                             }
-                            rope_node *next_node = preorder_stack_rope_node_traversal.next_node();
+                            rope_node *next_node = preorder_stack_rope_node_traversal.current_node;
                             std::memcpy(next_node->ch_buff, next_node->ch_buff + i, next_node->count - 1);
                             next_node->count -= i;
                             current_node->count = new_node_count;
                             current_node = next_node;
                         }
                         if (!n) break;
-                        current_node = preorder_stack_rope_node_traversal.next_node();
+                        current_node = preorder_stack_rope_node_traversal.current_node;
                     }
 
                     // now n is 0
@@ -559,7 +584,7 @@ public:
                     return;
                 }
 
-            } else std::runtime_error("something went wrong");
+            } else throw std::runtime_error("something went wrong");
         }
     };
     

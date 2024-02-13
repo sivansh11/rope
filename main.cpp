@@ -162,7 +162,7 @@ void test() {
     // str vs rope
     {
         std::string str("hello");
-        rope::rope<2> rope("hello");
+        rope::rope<2, checking_allocator> rope("hello");
         str.insert(3, "0");
         rope.insert(3, "0");
         assert(rope.to_string() == str);
@@ -174,16 +174,16 @@ void test() {
     // TODO: add test for slice
     // set_slice same size 
     {
-        rope::rope<1> rope1("0123456789");
-        rope::rope<2> rope2("0123456789");
-        rope::rope<3> rope3("0123456789");
-        rope::rope<4> rope4("0123456789");
-        rope::rope<5> rope5("0123456789");
-        rope::rope<6> rope6("0123456789");
-        rope::rope<7> rope7("0123456789");
-        rope::rope<8> rope8("0123456789");
-        rope::rope<9> rope9("0123456789");
-        rope::rope<10> rope10("0123456789");
+        rope::rope<1, checking_allocator> rope1("0123456789");
+        rope::rope<2, checking_allocator> rope2("0123456789");
+        rope::rope<3, checking_allocator> rope3("0123456789");
+        rope::rope<4, checking_allocator> rope4("0123456789");
+        rope::rope<5, checking_allocator> rope5("0123456789");
+        rope::rope<6, checking_allocator> rope6("0123456789");
+        rope::rope<7, checking_allocator> rope7("0123456789");
+        rope::rope<8, checking_allocator> rope8("0123456789");
+        rope::rope<9, checking_allocator> rope9("0123456789");
+        rope::rope<10, checking_allocator> rope10("0123456789");
         rope1.set_slice("abc", 3, 3);
         rope2.set_slice("abc", 3, 3);
         rope3.set_slice("abc", 3, 3);
@@ -207,16 +207,16 @@ void test() {
     }
     // set_slice size of string is less than n
     {
-        rope::rope<1> rope1("0123456789");
-        rope::rope<2> rope2("0123456789");
-        rope::rope<3> rope3("0123456789");
-        rope::rope<4> rope4("0123456789");
-        rope::rope<5> rope5("0123456789");
-        rope::rope<6> rope6("0123456789");
-        rope::rope<7> rope7("0123456789");
-        rope::rope<8> rope8("0123456789");
-        rope::rope<9> rope9("0123456789");
-        rope::rope<10> rope10("0123456789");
+        rope::rope<1, checking_allocator> rope1("0123456789");
+        rope::rope<2, checking_allocator> rope2("0123456789");
+        rope::rope<3, checking_allocator> rope3("0123456789");
+        rope::rope<4, checking_allocator> rope4("0123456789");
+        rope::rope<5, checking_allocator> rope5("0123456789");
+        rope::rope<6, checking_allocator> rope6("0123456789");
+        rope::rope<7, checking_allocator> rope7("0123456789");
+        rope::rope<8, checking_allocator> rope8("0123456789");
+        rope::rope<9, checking_allocator> rope9("0123456789");
+        rope::rope<10, checking_allocator> rope10("0123456789");
         rope1.set_slice("ab", 3, 3);
         rope2.set_slice("ab", 3, 3);
         rope3.set_slice("ab", 3, 3);
@@ -240,17 +240,17 @@ void test() {
     }
         // set_slice size of string is greater than n
     {
-        rope::rope<1> rope1("0123456789");
-        rope::rope<2> rope2("0123456789");
-        rope::rope<3> rope3("0123456789");
-        rope::rope<4> rope4("0123456789");
-        rope::rope<5> rope5("0123456789");
-        rope::rope<6> rope6("0123456789");
-        rope::rope<7> rope7("0123456789");
-        rope::rope<8> rope8("0123456789");
-        rope::rope<9> rope9("0123456789");
-        rope::rope<10> rope10("0123456789");
-        rope::rope<20> rope20("0123456789");
+        rope::rope<1, checking_allocator> rope1("0123456789");
+        rope::rope<2, checking_allocator> rope2("0123456789");
+        rope::rope<3, checking_allocator> rope3("0123456789");
+        rope::rope<4, checking_allocator> rope4("0123456789");
+        rope::rope<5, checking_allocator> rope5("0123456789");
+        rope::rope<6, checking_allocator> rope6("0123456789");
+        rope::rope<7, checking_allocator> rope7("0123456789");
+        rope::rope<8, checking_allocator> rope8("0123456789");
+        rope::rope<9, checking_allocator> rope9("0123456789");
+        rope::rope<10, checking_allocator> rope10("0123456789");
+        rope::rope<20, checking_allocator> rope20("0123456789");
         rope1.set_slice("abcd", 3, 3);
         rope2.set_slice("abcd", 3, 3);
         rope3.set_slice("abcd", 3, 3);
@@ -290,13 +290,16 @@ std::string read_string_from_file(const std::string &file_path) {
     return buffer.str();
 }
 
+// #include "new_rope.hpp"
+
 int main() {
     test();
 
-    rope::rope<2, checking_allocator> rope_test(read_string_from_file("../rope.hpp"));
-    std::cout << rope_test << '\n';
-    std::cout << rope_test.node_count() << '\n';
-    rope_test.reorder();
+    rope::rope<9> rope("01234567");
+    rope.insert(8, "89");
+    std::cout << rope << '\n';
+
+    // new_rope::rope_t<8> r("012345678");
 
     return 0;
 }

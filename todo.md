@@ -1,7 +1,4 @@
 <!-- add iters -->
 add find
+make code consistent and cleanup
 todo free nodes on removing, not possible atm as currently I am assuming that right always exist if left exist
-add string insert at index 
-remove section of text (kinda similar to adding string)
-slice (restructures the adjecent rope node)
-make code consistent
