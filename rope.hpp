@@ -308,7 +308,7 @@ public:
 
         template <typename rope_node_allocator>
         static void set_slice_impl(rope_node *&node, const char *str, size_t size, size_t pos, size_t n, rope_node_allocator& _rope_node_allocator) {
-            // TODO add bound checks
+            // TODO: test and add bound checks
             if (pos > node->count || pos + n > node->count) {
                 throw std::runtime_error("out of bounds");
             }
