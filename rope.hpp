@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cmath>
 
+
 #ifndef NDEBUG
 
 #else
@@ -39,7 +40,7 @@ public:
 
         template <typename rope_node_allocator_t>
         static rope_node_t *rope_node(const std::string& str, rope_node_allocator_t& rope_node_allocator) {
-            rope_node_t *root_node = rope_node_allocator.allocate(1);
+/            rope_node_t *root_node = rope_node_allocator.allocate(1);
             root_node->parent = nullptr;
             rope_node_impl(root_node, str.data(), 0, str.size(), rope_node_allocator);
             return root_node;

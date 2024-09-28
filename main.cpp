@@ -2,13 +2,7 @@
 
 #include <iostream>
 #include <unordered_map>
-#include <queue>
 #include <cassert>
-#include <fstream>
-#include <sstream>
-#include <functional>
-#include <chrono>
-#include <thread>
 
 // didnt know what to call this, its just an allocater that checks if all the allocations are deallocated
 template <typename _Tp>
@@ -189,7 +183,7 @@ void test_rope() {
 int main() {
 
     rope::rope_t<5, checking_allocator> r("01234567");
-    std::string str = "abcd";
+    std::string str = "abcde";
     r.set_slice(str.c_str(), str.size(), 2, 3);
     std::cout << r << '\n';
 
