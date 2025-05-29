@@ -1,6 +1,6 @@
 #include "rope.hpp"
 
-inline void test() {
+inline void test_slice() {
   {
     using node_t = rope::node_t<1>;
     {
@@ -775,3 +775,5 @@ inline void test() {
     }
   }
 }
+
+inline void test_set_slice() {}

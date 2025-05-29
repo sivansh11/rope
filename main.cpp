@@ -10,8 +10,6 @@ int main() {
   test_slice();
   test_set_slice();
   // rope::node_t<3> *rope = rope::node_t<3>::create("0123456");
-  // rope::breadth_first_debug_print(rope);
-  // std::cout << "*********SET SLICE********\n";
   // rope::node_t<3>::set_slice(rope, "ab", 2, 4);
   // std::string str = rope::node_t<3>::slice(rope, 0, rope->size);
   // std::cout << str << '\n';
