@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <ios>
 #include <iostream>
 #include <string>
@@ -14,10 +15,21 @@ namespace rope {
 
 template <uint32_t BUFFER_LENGTH> struct node_t;
 
+template <uint32_t BUFFER_LENGTH>
+void breadth_first_debug_print(node_t<BUFFER_LENGTH> *node);
+
 namespace impl {
 
 inline bool in_range(size_t v, size_t start, size_t end) {
   return v >= start && v < end;
+}
+
+template <uint32_t BUFFER_LENGTH>
+static void fix_parent_count(node_t<BUFFER_LENGTH> *node) {
+  while (node->parent) {
+    node->parent->size = node->parent->left->size + node->parent->right->size;
+    node = node->parent;
+  }
 }
 
 template <uint32_t BUFFER_LENGTH>
@@ -44,10 +56,10 @@ void create(node_t<BUFFER_LENGTH> *node, const char *str, size_t l, size_t r) {
 
 template <uint32_t BUFFER_LENGTH> void destroy(node_t<BUFFER_LENGTH> *node) {
   if (!node->is_leaf()) {
-    assert(node->left &&
-           node->right); // for now every parent needs to have 2 children
-    destroy(node->left);
-    destroy(node->right);
+    if (node->left)
+      destroy(node->left);
+    if (node->right)
+      destroy(node->right);
   }
   delete node;
 }
@@ -129,27 +141,114 @@ void set_slice(node_t<BUFFER_LENGTH> *root, const char *str, size_t size,
   // TODO: optimise traversal
   // atm I traverse over all the leaf nodes from start, in theory I can skip
   // nodes smartly
+  node_t<BUFFER_LENGTH> *current_node;
+  size_t i;
   while (size && n) {
-    node_t<BUFFER_LENGTH> *current_node = stack.back();
+    current_node = stack.back();
     stack.pop_back();
-    // debug_print(current_node);
-    // std::cout << "*********************************\n";
+    debug_print(current_node);
+    std::cout << "*********************************\n";
     if (!current_node->is_leaf()) {
       stack.push_back(current_node->right);
       stack.push_back(current_node->left);
     } else {
       if (in_range(pos, traverse, traverse + current_node->size)) {
-        for (size_t i = pos - traverse; i < current_node->size; i++) {
+        for (i = pos - traverse; i < current_node->size; i++) {
           current_node->data[i] = str[str_index++];
           pos++;
           n--;
           size--;
-          traverse++;
           if (!n || !size)
             break;
         }
-      } else {
-        traverse += current_node->size;
+      }
+      traverse += current_node->size;
+    }
+  }
+
+  std::cout << "************NEXT STAGE************\n";
+
+  // either n left or size left
+
+  if (size) {
+    // size left
+    // copy current nodes data to a string, append left over data
+    // create a mini rope, repace current node with mini rope
+
+    // sanity checks
+    assert(current_node);
+    assert(current_node->is_leaf());
+
+    char data[current_node->size + size];
+    std::memcpy(data, current_node->data, current_node->size);
+    std::memcpy(data + current_node->size, str + str_index, size);
+
+    node_t<BUFFER_LENGTH> *new_current_node = new node_t<BUFFER_LENGTH>();
+    create(new_current_node, data, 0, current_node->size + size);
+
+    std::cout << "CURRENT NODE: vvvvv\n";
+    node_t<BUFFER_LENGTH>::debug_print(current_node);
+    std::cout << "*************\n";
+    breadth_first_debug_print(new_current_node);
+
+    new_current_node->parent = current_node->parent;
+    node_t<BUFFER_LENGTH> *parent = new_current_node->parent;
+    if (parent->left == current_node) {
+      parent->left = new_current_node;
+    } else {
+      parent->right = new_current_node;
+    }
+    delete current_node;
+    fix_parent_count(new_current_node);
+  } else {
+    // n left
+    node_t<BUFFER_LENGTH>::debug_print(current_node);
+    std::cout << "*************\n";
+    assert(traverse >= pos);
+    size_t traverse_delta = current_node->size - (traverse - pos);
+    if (n >= traverse - pos) {
+      // example BUFFER_LENGTH = 3
+      // A X X
+      current_node->size = (traverse - pos);
+      n -= traverse - pos;
+      traverse -= traverse_delta;
+      pos = traverse;
+      fix_parent_count(current_node);
+    } else {
+      // weird case
+      // example BUFFER_LENGTH = 4
+      // A X X B -> A B
+      i += 1;
+      std::memmove(current_node->data + i, current_node->data + traverse - pos,
+                   current_node->size - (traverse - pos));
+      current_node->size = i + BUFFER_LENGTH - traverse + pos;
+      n = 0;
+      fix_parent_count(current_node);
+    }
+    if (n) {
+      // get next node
+      while (stack.size()) {
+        current_node = stack.back();
+        stack.pop_back();
+        debug_print(current_node);
+        std::cout << "*********************************\n";
+        if (!current_node->is_leaf()) {
+          stack.push_back(current_node->right);
+          stack.push_back(current_node->left);
+        } else {
+          if (in_range(pos, traverse, traverse + current_node->size)) {
+            if (n >= current_node->size) {
+              current_node->size = 0;
+            } else {
+              // move back
+              std::memmove(current_node->data, current_node->data + n,
+                           current_node->size - n);
+              current_node->size = current_node->size - n;
+            }
+            fix_parent_count(current_node);
+          }
+          traverse += current_node->size;
+        }
       }
     }
   }
